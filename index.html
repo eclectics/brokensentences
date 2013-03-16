@@ -1,0 +1,222 @@
+<html manifest="brokensentences.manifest"><head><title>Broken Sentences</title>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0" />  
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black" />  
+<meta name="DC.Creator" content="Gregor McNish" >
+<meta name="DC.Title" content="Broken Sentences" >
+<meta name="DC.Date" content="2012-03-09" >
+<meta name="DC.Identifier" content="http://applied-eclectics.org/resources/expts/brokensentences" >
+<meta name="DC.Description" content="Literacy game for iPad web app" />
+<meta name="DC.Rights" content="Creative Commons Attribution-NonCommercial-ShareAlike 2.5 Australia (CC BY-NC-SA 2.5) http://creativecommons.org/licenses/by-nc-sa/2.5/au/">
+<meta http-equiv="content-type" content="text/html;charset=UTF-8"/>
+<script type="text/javascript" src="../jquery-1.4.1.js"></script>
+<script>
+var cutwords=function(){
+var i;
+var wordlist; //array to hold words
+var l; //wordlist length
+var floater={};
+var history=[];
+var h=0;
+var position;
+
+function getwords(){
+    var w=$('#wordlist').val();
+    save(w);
+    w=w.replace(/[-+/*=()]/g,' $& ');
+    w=w.replace(/ +/g,' ');
+	wordlist=w.split(' ');
+	l=wordlist.length;
+    wordlist.sort(function(a,b){return Math.random()-0.5;});
+}
+function block(e) {
+   e.preventDefault() ;
+}
+
+function save(s){
+    if (!s) return;
+    for (i=0;i<history.length;i++){
+        if (history[i]===s){
+            return;
+        }
+    }
+
+    history.push(s);
+    h=history.length-1;
+}
+function recall(){
+    h-=1;
+    if (h<0 || h>=history.length){
+        h=history.length-1;
+    }
+    $('#wordlist').val(history[h]);
+}
+function clear(){
+    //toggle display state of wordlist
+    h++;
+    $('#wordlist').val('');
+
+}
+function dim(j){
+    //given jquery object
+    //includes margin
+    var h,w,t,l,mx,my;
+    h=parseInt(j.css('height'),10)+20;
+    w=parseInt(j.css('width'),10)+20;
+    t=j.offset().top-10;
+    l=j.offset().left-10;
+    my=h/2; //offset from midpoint
+    mx=w/2;
+    return {'h':h,'w':w,'t':t,'l':l,'mx':mx,'my':my};
+}
+function moveword(j,p){
+    //given jquery object, center it on p ={x,y}
+   // console.log(p);
+    var d=dim(j);
+    j.css({left:p.x-d.mx,top:p.y-d.my});
+}
+function touchpoint(orig){
+    //takes an original event
+    return {'x':orig.changedTouches[0].pageX,'y':orig.changedTouches[0].pageY};
+}
+
+function lift(e){
+    var d;
+    e.preventDefault();  
+    var orig = e.originalEvent;  
+
+    if ($("#floaty div").length===0){
+        $(this).appendTo("#floaty"); 
+        d=dim($("#floaty"));
+    }
+    moveword($("#floaty"),touchpoint(orig));
+}
+
+function move(e){
+    e.preventDefault();  
+    var orig = e.originalEvent; 
+    var p= touchpoint(orig);
+    if (p.x < 50){p.x=55;}
+    if (Math.abs(orientation)==90){//landscape
+        if (p.x > 950){p.x=935;}
+    } else {
+        if (p.x > 720){p.x=700;}
+    }
+    if (p.y < 100){p.y=105;}
+    if (p.y >700){p.y=695;}
+    
+    if (p.y<350){
+            position='dest';
+    }
+    else {
+            position='source';
+    }
+    moveword($("#floaty"),p);
+    //move existing words out of the way
+    //should work regardless of which div we're over
+}
+
+
+function drop(e){
+    var orig = e.originalEvent;  
+    var p=touchpoint(orig);
+    var l=$("#"+position+" div").length;
+    var d,f;
+    for (i=0;i<l;i++){
+        t=$("#"+position+" div").eq(i);
+        d=dim(t);
+        // $("#tty").val($("#tty").val()+p.left+',');
+        if (d.l<p.x && d.l+d.w>p.x && d.t<p.y &&d.t+d.h >p.y){ //is touchpoint within the word box
+            f=$("#floaty div").detach();
+            if (p.x < d.l+d.mx){
+                f.insertBefore(t);
+            }
+            else {
+                f.insertAfter(t);
+            }
+            break;
+        }
+    }
+    if ($("#floaty div").length){ //if not between existing, append to end
+//        f=$("#floaty div").detach();
+        $("#"+position).append($("#floaty div"));
+    }
+    if ( $("#"+position).text()===$("#wordlist").val().replace(/ /g,"")){
+        document.getElementById('yippee').play();
+    }
+}
+    
+function clipwords(){
+    $("#source").empty();
+    $("#dest").empty();
+	getwords();
+	var html='';
+	for (i=0;i<l;i++){
+	        html+='<div>'+wordlist[i]+'</div>'; //clickable, whereas spans would need special handling
+	}
+	$("#source").html(html);
+	
+    $("#source > div").bind("touchstart", lift);  
+    $("#source > div").bind("touchmove", move);  
+    $("#source > div").bind("touchend", drop);  
+    
+    
+
+}
+
+return {
+    clipwords:clipwords,
+    recall:recall,
+    clear:clear,
+    block:block
+};
+
+}();
+</script>
+
+<style>
+@media only screen and (orientation: landscape) {
+  /* rules for iPad in landscape orientation */
+div#source, div#dest {padding-right:150px}
+}
+body {font-family: Verdana,sans-serif;margin:0;padding:0;background:#99F;}
+#wordlist {width:75%;}
+
+.control {background:#666;padding:5px;;
+}
+input {font-size:125%}
+div#floaty {padding:0;position:absolute}
+div#source {position:absolute;
+    top:350px;
+    width:100%;
+border-top:3px dotted #F66;
+    }
+div#dest {position:absolute;
+    top:50px;
+    width:100%;
+    min-height:300px;    
+    }
+
+div#source div, div#dest div, #floaty div {display:inline-block;
+     padding: .5ex 1ex;
+     border: 1px solid grey;
+     margin: 10px;
+     font-size:200%;
+     background:#EEE;
+     -webkit-border-radius:15px;min-height:2ex}
+ }    
+</style>
+</head>
+<body ontouchmove="cutwords.block(event);">
+<div class="control">
+<input type="text" id="wordlist" value="One day Ellie and Alistair went to the shops"/>
+<input type="button" value="Use" onclick="cutwords.clipwords();">
+<input type="button" value="<-" onclick="cutwords.recall();">
+<input type="button" value="clear" onclick="cutwords.clear();">
+
+</div>
+<div id="dest"></div>
+<div id="source"></div>
+<div id="floaty"></div>
+<audio id="yippee" preload="auto"><source src="yippee.m4a"/></audio>
+</body></html>
